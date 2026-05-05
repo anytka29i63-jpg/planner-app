@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Планер техникума • Общий планер</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
+        <h1 class="display-5 fw-semibold">
+            <i class="bi bi-calendar-week-fill text-primary"></i> Планер техникума
+        </h1>
+        <div class="mt-2 mt-sm-0 d-flex gap-2 flex-wrap">
+            <a href="/all-events" class="btn btn-outline-dark">📅 Все мероприятия (сегодня/месяц)</a>
+            <a href="/dashboard" class="btn btn-outline-info"><i class="bi bi-person-circle"></i> Мой дашборд</a>
+            <button class="btn btn-success" id="addEventBtn"><i class="bi bi-plus-circle"></i> Добавить</button>
+            <button class="btn btn-outline-info" id="manageEmployeesBtn"><i class="bi bi-people"></i> Сотрудники</button>
+            {% if user_role == 'admin' %}
+                <button class="btn btn-outline-secondary" id="importEmployeesBtn"><i class="bi bi-file-spreadsheet"></i> Импорт сотрудников</button>
+                <button class="btn btn-outline-warning" id="importUsersBtn"><i class="bi bi-person-badge"></i> Импорт пользователей</button>
+                <button class="btn btn-outline-dark" id="manageUsersBtn"><i class="bi bi-people-fill"></i> Управление пользователями</button>
+            {% endif %}
+            <button class="btn btn-outline-primary" id="importCsvBtn"><i class="bi bi-upload"></i> Импорт CSV</button>
+            <a href="/logout" class="btn btn-outline-danger"><i class="bi bi-box-arrow-right"></i> Выйти</a>
+        </div>
+    </div>
+
+    <ul class="nav nav-pills nav-fill mb-4 flex-wrap" id="plannerTabs" role="tablist"></ul>
+
+    <div id="loadingIndicator" class="text-center py-5 d-none">
+        <div class="spinner-border text-primary" role="status"></div>
+        <p class="mt-2">Загрузка мероприятий...</p>
+    </div>
+
+    <div id="cardsContainer" class="row g-4"></div>
+    <div id="emptyMessage" class="text-center text-muted py-5 d-none">
+        <i class="bi bi-inbox fs-1"></i><p class="mt-2">Нет мероприятий в этой категории.</p>
+    </div>
+</div>
+
+<!-- Модальное окно мероприятия -->
+<div class="modal fade" id="eventModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">Детали мероприятия</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="eventForm">
+                    <input type="hidden" id="eventId">
+                    <div class="row">
+                        <div class="col-md-8 mb-3">
+                            <label for="title" class="form-label fw-semibold">Название *</label>
+                            <input type="text" class="form-control" id="title" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="color" class="form-label fw-semibold">Цвет карточки</label>
+                            <input type="color" class="form-control form-control-color" id="color" value="#ffffff">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label fw-semibold">Описание</label>
+                        <textarea class="form-control" id="description" rows="2"></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <label for="date" class="form-label fw-semibold">Дата *</label>
+                            <input type="date" class="form-control" id="date" required>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="time" class="form-label fw-semibold">Время *</label>
+                            <input type="time" class="form-control" id="time" required>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="status" class="form-label fw-semibold">Статус</label>
+                            <select class="form-select" id="status">
+                                <option value="plan">📋 Запланировано</option>
+                                <option value="done">✅ Завершено</option>
+                                <option value="postponed">🔄 Перенесено</option>
+                                <option value="cancelled">❌ Отменено</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="planned" class="form-label fw-semibold">Плановость</label>
+                            <select class="form-select" id="planned">
+                                <option value="true">📅 Плановое</option>
+                                <option value="false">⚡ Внеплановое</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">Ответственные *</label>
+                            <input type="text" class="form-control mb-1" id="responsibleSearch" placeholder="Поиск сотрудника...">
+                            <select multiple class="form-select" id="responsible" size="8"></select>
+                            <small class="text-muted">Удерживайте Ctrl (Cmd) для выбора нескольких</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">Контролирующие *</label>
+                            <input type="text" class="form-control mb-1" id="controllerSearch" placeholder="Поиск сотрудника...">
+                            <select multiple class="form-select" id="controller" size="8"></select>
+                            <small class="text-muted">Удерживайте Ctrl (Cmd) для выбора нескольких</small>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="participants_count" class="form-label fw-semibold">Кол-во участников</label>
+                            <input type="number" class="form-control" id="participants_count" value="0">
+                        </div>
+                        <div class="col-md-8 mb-3">
+                            <label for="participants_details" class="form-label fw-semibold">Участники (группы/ФИО)</label>
+                            <input type="text" class="form-control" id="participants_details">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="category" class="form-label fw-semibold">Категория / Раздел</label>
+                            <select class="form-select" id="category">
+                                <option value="general">🏛 Общетехникумовские</option>
+                                <option value="career">🎓 Профориентация</option>
+                                <option value="external">🌍 Внешние мероприятия</option>
+                                <option value="research">🔬 НИС / Конкурсы / Олимпиады</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="service" class="form-label fw-semibold">Служба (для логотипа)</label>
+                            <select class="form-select" id="service">
+                                <option value="general">🏛 Общетехникумовская</option>
+                                <option value="career">🎓 Профориентация</option>
+                                <option value="admin">🏢 Административно-хозяйственная</option>
+                                <option value="social-ped">🤝 Социально-педагогическая</option>
+                                <option value="methodical">📚 Учебно-методический отдел</option>
+                                <option value="bas">✈️ БАС-центр</option>
+                                <option value="external">🌍 Внешние мероприятия</option>
+                                <option value="council">👥 Совет руководства</option>
+                                <option value="ict">💻 Отдел ИКТ</option>
+                                <option value="academic">📖 Учебная служба</option>
+                                <option value="physical">🏋️ Физкультура</option>
+                                <option value="organizational">📋 Организационная работа</option>
+                            </select>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" id="deleteEventBtn"><i class="bi bi-trash"></i> Удалить</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" id="saveEventBtn">Сохранить изменения</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно управления сотрудниками -->
+<div class="modal fade" id="employeesModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Управление сотрудниками</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <button class="btn btn-sm btn-success mb-3" id="addEmployeeBtn"><i class="bi bi-plus"></i> Добавить сотрудника</button>
+                <table class="table table-sm table-bordered" id="employeesTable">
+                    <thead class="table-light">
+                        <tr><th>ФИО</th><th>Должность</th><th>Служба</th><th>Email</th><th>Телефон</th><th>Действия</th></tr>
+                    </thead>
+                    <tbody id="employeesTableBody"></tbody>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно добавления/редактирования сотрудника -->
+<div class="modal fade" id="employeeEditModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="employeeModalTitle">Сотрудник</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="employeeForm">
+                    <input type="hidden" id="employeeId">
+                    <div class="mb-2"><label>ФИО *</label><input type="text" class="form-control" id="empFullName" required></div>
+                    <div class="mb-2"><label>Должность</label><input type="text" class="form-control" id="empPosition"></div>
+                    <div class="mb-2"><label>Служба (отдел)</label><input type="text" class="form-control" id="empDepartment"></div>
+                    <div class="mb-2"><label>Email</label><input type="email" class="form-control" id="empEmail"></div>
+                    <div class="mb-2"><label>Телефон</label><input type="text" class="form-control" id="empPhone"></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" id="saveEmployeeBtn">Сохранить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно импорта CSV мероприятий -->
+<div class="modal fade" id="importModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Импорт годового плана (CSV)</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <p>Колонки: <code>title, date, time, responsible, controller, participants_count, participants_details, status, service, category</code></p>
+                <p>В <code>responsible, controller</code> ФИО через запятую.</p>
+                <input type="file" class="form-control mt-2" id="csvFile" accept=".csv">
+            </div>
+            <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button class="btn btn-primary" id="confirmImportBtn">Загрузить</button></div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальные окна только для администратора -->
+{% if user_role == 'admin' %}
+<div class="modal fade" id="importEmployeesModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Импорт сотрудников из CSV</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <p>Колонки: <code>full_name, position, department, email, phone</code></p>
+                <input type="file" class="form-control mt-2" id="employeesCsvFile" accept=".csv">
+            </div>
+            <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button class="btn btn-primary" id="confirmImportEmployeesBtn">Загрузить</button></div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="importUsersModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Импорт пользователей системы</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <p>Колонки: <code>login, full_name, role, service_code, password</code></p>
+                <input type="file" class="form-control mt-2" id="usersCsvFile" accept=".csv">
+            </div>
+            <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button class="btn btn-primary" id="confirmImportUsersBtn">Загрузить</button></div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="usersModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Управление пользователями системы</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <button class="btn btn-sm btn-success mb-3" id="addUserBtn"><i class="bi bi-plus"></i> Добавить пользователя</button>
+                <table class="table table-sm table-bordered" id="usersTable">
+                    <thead class="table-light">
+                        <tr><th>Логин</th><th>ФИО</th><th>Роль</th><th>Код службы</th><th>Действия</th></tr>
+                    </thead>
+                    <tbody id="usersTableBody"></tbody>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="userEditModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="userModalTitle">Пользователь</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="userForm">
+                    <input type="hidden" id="userId">
+                    <div class="mb-2"><label>Логин *</label><input type="text" class="form-control" id="userLogin" required></div>
+                    <div class="mb-2"><label>ФИО *</label><input type="text" class="form-control" id="userFullName" required></div>
+                    <div class="mb-2"><label>Пароль</label><input type="password" class="form-control" id="userPassword" placeholder="Оставьте пустым, чтобы не менять"></div>
+                    <div class="mb-2"><label>Роль</label><select class="form-select" id="userRole"><option value="admin">Администратор</option><option value="deputy">Заместитель директора</option><option value="head">Руководитель</option><option value="staff">Сотрудник</option></select></div>
+                    <div class="mb-2"><label>Код службы</label><input type="text" class="form-control" id="userServiceCode" placeholder="например social-ped"></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" id="saveUserBtn">Сохранить</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

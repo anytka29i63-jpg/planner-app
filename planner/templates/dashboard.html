@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мой дашборд • Планер техникума</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .dashboard-card { background: white; border-radius: 20px; padding: 1rem; margin-bottom: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-left: 4px solid; transition: 0.2s; cursor: pointer; }
+        .dashboard-card:hover { transform: translateX(5px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .section-title { font-size: 1.3rem; font-weight: 600; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid #dee2e6; }
+        .event-time { font-weight: 600; color: #0d6efd; }
+        .user-info { background: linear-gradient(135deg, #0d6efd, #0b5ed7); color: white; border-radius: 16px; padding: 0.8rem 1.2rem; margin-bottom: 1.5rem; }
+        .period-selector { margin-bottom: 1.5rem; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+        .period-btn { min-width: 100px; }
+        .date-filter { display: flex; justify-content: center; gap: 10px; margin-bottom: 1.5rem; align-items: center; flex-wrap: wrap; }
+        .task-card, .assignment-card { background: white; border-radius: 16px; padding: 0.8rem; margin-bottom: 0.8rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); transition: 0.2s; }
+        .task-card:hover, .assignment-card:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .task-status, .assignment-status { display: inline-block; padding: 0.2rem 0.5rem; border-radius: 20px; font-size: 0.75rem; font-weight: 500; }
+        .status-plan { background: #e9ecef; color: #2c3e50; }
+        .status-done { background: #d1e7dd; color: #0f5132; }
+        .status-cancelled { background: #f8d7da; color: #842029; }
+        .status-postponed { background: #fff3cd; color: #856404; }
+        .assignment-overdue { border-left: 4px solid #dc3545; background: #fff5f5; }
+        .assignment-completed { border-left: 4px solid #198754; background: #f0fff4; }
+        .assignment-active { border-left: 4px solid #0d6efd; background: white; }
+        .nav-link .badge { margin-left: 6px; }
+    </style>
+</head>
+<body>
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
+        <h1><i class="bi bi-person-circle"></i> Мой дашборд</h1>
+        <div>
+            <a href="/" class="btn btn-outline-secondary me-2">Общий планер</a>
+            <a href="/reports" class="btn btn-outline-primary me-2">📊 Отчёты</a>
+            <a href="/logout" class="btn btn-outline-danger">Выйти</a>
+        </div>
+    </div>
+    <div id="userInfoBlock" class="user-info d-flex justify-content-between align-items-center flex-wrap">
+        <div><i class="bi bi-person-circle fs-3 me-2"></i><strong id="userFullName"></strong> · <span id="userRole"></span><span class="ms-2 badge bg-light text-dark" id="userService"></span></div>
+    </div>
+
+    <ul class="nav nav-tabs mb-4" id="dashboardTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="events-tab" data-bs-toggle="tab" data-bs-target="#events" type="button" role="tab">Мероприятия</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tasks-tab" data-bs-toggle="tab" data-bs-target="#tasks" type="button" role="tab">Мои задачи</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link position-relative" id="assignments-tab" data-bs-toggle="tab" data-bs-target="#assignments" type="button" role="tab">
+                Поручения <span id="assignmentsBadge" class="badge bg-danger rounded-pill" style="display: none;">0</span>
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content">
+        <!-- Вкладка мероприятий (без изменений) -->
+        <div class="tab-pane fade show active" id="events" role="tabpanel">
+            <div class="period-selector">
+                <button class="btn btn-primary period-btn" data-period="today">Сегодня</button>
+                <button class="btn btn-outline-primary period-btn" data-period="month">Текущий месяц</button>
+                <button class="btn btn-outline-primary period-btn" data-period="year">Текущий год</button>
+            </div>
+            <div class="date-filter">
+                <label for="customDate" class="fw-semibold">Выбрать дату:</label>
+                <input type="date" id="customDate" class="form-control w-auto">
+                <button id="applyDateBtn" class="btn btn-secondary">Применить</button>
+                <button id="resetDateBtn" class="btn btn-outline-secondary">Сбросить</button>
+            </div>
+            <div class="row g-4">
+                <div class="col-md-4"><div class="section-title"><i class="bi bi-building"></i> Моя служба</div><div id="serviceEventsContainer">Загрузка...</div></div>
+                <div class="col-md-4"><div class="section-title"><i class="bi bi-person-check-fill"></i> Я ответственный</div><div id="responsibleEventsContainer">Загрузка...</div></div>
+                <div class="col-md-4"><div class="section-title"><i class="bi bi-eye-fill"></i> Я контролирующий</div><div id="controllerEventsContainer">Загрузка...</div></div>
+            </div>
+        </div>
+
+        <!-- Вкладка "Мои задачи" (исправленная) -->
+        <div class="tab-pane fade" id="tasks" role="tabpanel">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <label class="me-2">Фильтр по статусу:</label>
+                    <select id="taskStatusFilter" class="form-select w-auto d-inline-block">
+                        <option value="all">Все</option>
+                        <option value="plan">Запланирована</option>
+                        <option value="done">Выполнена</option>
+                        <option value="cancelled">Отменена</option>
+                        <option value="postponed">Перенесена</option>
+                    </select>
+                </div>
+                <button class="btn btn-success" id="addTaskBtn"><i class="bi bi-plus-circle"></i> Добавить задачу</button>
+            </div>
+            <div id="tasksList" class="mt-3">Загрузка...</div>
+        </div>
+
+        <!-- Вкладка "Поручения" (без изменений) -->
+        <div class="tab-pane fade" id="assignments" role="tabpanel">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <button class="btn btn-primary" id="addAssignmentBtn"><i class="bi bi-send"></i> Дать поручение</button>
+                </div>
+            </div>
+            <div id="assignmentsList" class="mt-3">Загрузка...</div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальные окна (без изменений) -->
+<div class="modal fade" id="taskModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title" id="taskModalTitle">Задача</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <form id="taskForm">
+                    <input type="hidden" id="taskId">
+                    <div class="mb-2"><label>Название</label><input type="text" class="form-control" id="taskTitle" required></div>
+                    <div class="mb-2"><label>Описание</label><textarea class="form-control" id="taskDescription" rows="2"></textarea></div>
+                    <div class="mb-2"><label>Иконка важности</label><select class="form-select" id="taskIcon">
+                        <option value="bi bi-flag">🏁 Флаг (обычная)</option>
+                        <option value="bi bi-star">⭐ Звезда (важная)</option>
+                        <option value="bi bi-exclamation-triangle">⚠️ Восклицание (срочная)</option>
+                        <option value="bi bi-calendar-heart">❤️ Сердце (личное)</option>
+                    </select></div>
+                    <div class="mb-2"><label>Статус</label><select class="form-select" id="taskStatus">
+                        <option value="plan">Запланирована</option>
+                        <option value="done">Выполнена</option>
+                        <option value="cancelled">Отменена</option>
+                        <option value="postponed">Перенесена</option>
+                    </select></div>
+                    <div class="mb-2"><label>Дата завершения (опционально)</label><input type="date" class="form-control" id="taskDueDate"></div>
+                </form>
+            </div>
+            <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button class="btn btn-primary" id="saveTaskBtn">Сохранить</button></div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="assignmentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title" id="assignmentModalTitle">Поручение</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <form id="assignmentForm">
+                    <input type="hidden" id="assignmentId">
+                    <div class="mb-2"><label>Название поручения</label><input type="text" class="form-control" id="assignmentTitle" required></div>
+                    <div class="mb-2"><label>Описание</label><textarea class="form-control" id="assignmentDescription" rows="2"></textarea></div>
+                    <div class="mb-2"><label>Ответственный (сотрудник)</label><select class="form-select" id="assignmentResponsible" required></select></div>
+                    <div class="mb-2"><label>Контролирующий (опционально)</label><select class="form-select" id="assignmentController"><option value="">-- не выбран --</option></select></div>
+                    <div class="mb-2"><label>Срок исполнения</label><input type="date" class="form-control" id="assignmentDeadline" required></div>
+                    <div class="mb-2 form-check"><input type="checkbox" class="form-check-input" id="assignmentCompleted"><label class="form-check-label">Выполнено</label></div>
+                </form>
+            </div>
+            <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button class="btn btn-primary" id="saveAssignmentBtn">Сохранить</button></div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // ---------- Данные о сотрудниках ----------
+    let employees = [];
+    async function loadEmployees() {
+        const resp = await fetch('/api/employees');
+        employees = await resp.json();
+    }
+
+    // ---------- Мероприятия ----------
+    let currentMode = 'period';
+    let currentPeriod = 'today';
+    let customDate = null;
+
+    const todayBtn = document.querySelector('[data-period="today"]');
+    const monthBtn = document.querySelector('[data-period="month"]');
+    const yearBtn = document.querySelector('[data-period="year"]');
+    const customDateInput = document.getElementById('customDate');
+    const applyDateBtn = document.getElementById('applyDateBtn');
+    const resetDateBtn = document.getElementById('resetDateBtn');
+
+    function setActivePeriodBtn(period) {
+        [todayBtn, monthBtn, yearBtn].forEach(btn => {
+            if (btn.dataset.period === period) {
+                btn.classList.add('btn-primary');
+                btn.classList.remove('btn-outline-primary');
+            } else {
+                btn.classList.add('btn-outline-primary');
+                btn.classList.remove('btn-primary');
+            }
+        });
+    }
+
+    async function loadEvents() {
+        let url;
+        if (currentMode === 'period') {
+            url = `/api/user/dashboard?period=${currentPeriod}`;
+        } else {
+            url = `/api/user/dashboard?date=${customDate}`;
+        }
+        const resp = await fetch(url);
+        if (!resp.ok) {
+            alert('Ошибка загрузки мероприятий');
+            return;
+        }
+        const data = await resp.json();
+        document.getElementById('userFullName').innerText = data.user.full_name;
+        let roleText = { deputy:'Заместитель директора', head:'Руководитель', admin:'Администратор', staff:'Сотрудник' }[data.user.role] || 'Сотрудник';
+        document.getElementById('userRole').innerText = roleText;
+        document.getElementById('userService').innerText = getServiceName(data.user.service_code);
+        renderEvents(data.service_events, 'serviceEventsContainer');
+        renderEvents(data.responsible_events, 'responsibleEventsContainer');
+        renderEvents(data.controller_events, 'controllerEventsContainer');
+    }
+
+    function getServiceName(code) {
+        const map = { 'general':'Общетехникумовская', 'career':'Профориентация', 'admin':'Административно-хозяйственная', 'social-ped':'Социально-педагогическая', 'methodical':'Учебно-методический отдел', 'bas':'БАС-центр', 'external':'Внешние мероприятия', 'council':'Совет руководства', 'ict':'Отдел ИКТ', 'academic':'Учебная служба', 'physical':'Физическая культура', 'organizational':'Организационная работа' };
+        return map[code] || code;
+    }
+
+    function renderEvents(events, containerId) {
+        const container = document.getElementById(containerId);
+        if (!events.length) { container.innerHTML = '<div class="text-muted text-center py-3">Нет мероприятий</div>'; return; }
+        container.innerHTML = '';
+        events.forEach(ev => {
+            const card = document.createElement('div');
+            card.className = 'dashboard-card';
+            card.style.borderLeftColor = ev.color || '#0d6efd';
+            const responsibleText = Array.isArray(ev.responsible) ? ev.responsible.join(', ') : ev.responsible;
+            card.innerHTML = `<div class="d-flex justify-content-between align-items-start"><div><div class="fw-bold">${escapeHtml(ev.title)}</div><div class="small text-muted"><i class="bi bi-person-badge"></i> ${escapeHtml(responsibleText)}</div></div><div class="event-time">${ev.time ? ev.time.slice(0,5) : ''}</div></div>${ev.description ? `<div class="small mt-1">📝 ${escapeHtml(ev.description)}</div>` : ''}<div class="mt-2 small"><span class="badge ${getStatusClass(ev.status)}">${getStatusText(ev.status)}</span> ${!ev.planned ? '<span class="badge bg-warning text-dark ms-1">⚡ внеплановое</span>' : ''}</div>`;
+            card.addEventListener('click', () => window.location.href = `/?edit=${ev.id}`);
+            container.appendChild(card);
+        });
+    }
+
+    function getStatusClass(status) { return { done:'bg-success text-white', postponed:'bg-warning text-dark', today:'bg-primary text-white', cancelled:'bg-danger text-white' }[status] || 'bg-secondary text-white'; }
+    function getStatusText(status) { return { done:'Завершено', postponed:'Перенесено', today:'Сегодня', cancelled:'Отменено', plan:'Запланировано' }[status] || status; }
+    function escapeHtml(str) { if (!str) return ''; return str.replace(/[&<>]/g, m => m === '&' ? '&amp;' : (m === '<' ? '&lt;' : '&gt;')); }
+
+    // ---------- Задачи (исправленная версия) ----------
+    async function loadTasks() {
+        const resp = await fetch('/api/tasks');
+        if (!resp.ok) {
+            console.error('Ошибка загрузки задач');
+            return;
+        }
+        const tasks = await resp.json();
+        const filter = document.getElementById('taskStatusFilter').value;
+        const filtered = filter === 'all' ? tasks : tasks.filter(t => t.status === filter);
+        const container = document.getElementById('tasksList');
+        if (!filtered.length) {
+            container.innerHTML = '<div class="text-muted text-center py-3">Нет задач</div>';
+            return;
+        }
+        let html = '<div class="table-responsive"><table class="table table-bordered table-hover"><thead class="table-light">';
+        html += '<tr><th>Иконка</th><th>Название</th><th>Статус</th><th>Дата записи</th><th>Дата завершения</th><th>Действия</th></tr>';
+        html += '</thead><tbody>';
+        filtered.forEach(t => {
+            let statusText = '';
+            let statusClass = '';
+            switch (t.status) {
+                case 'plan': statusText = 'Запланирована'; statusClass = 'status-plan'; break;
+                case 'done': statusText = 'Выполнена'; statusClass = 'status-done'; break;
+                case 'cancelled': statusText = 'Отменена'; statusClass = 'status-cancelled'; break;
+                case 'postponed': statusText = 'Перенесена'; statusClass = 'status-postponed'; break;
+                default: statusText = t.status; statusClass = 'status-plan';
+            }
+            html += `<tr>
+                        <td><i class="${t.icon}"></i></td>
+                        <td>${escapeHtml(t.title)}</td>
+                        <td><span class="task-status ${statusClass}">${statusText}</span></td>
+                        <td>${t.created_date}</td>
+                        <td>${t.due_date || '—'}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary edit-task" data-id="${t.id}">✏️</button>
+                            <button class="btn btn-sm btn-outline-danger delete-task" data-id="${t.id}">🗑️</button>
+                        </td>
+                    </tr>`;
+        });
+        html += '</tbody></table></div>';
+        container.innerHTML = html;
+        // Привязка событий после рендера
+        document.querySelectorAll('.edit-task').forEach(btn => btn.addEventListener('click', () => openTaskModal(parseInt(btn.dataset.id))));
+        document.querySelectorAll('.delete-task').forEach(btn => btn.addEventListener('click', async () => {
+            if (confirm('Удалить задачу?')) {
+                await fetch(`/api/task/${btn.dataset.id}`, { method: 'DELETE' });
+                loadTasks();
+            }
+        }));
+    }
+
+    function openTaskModal(id = null) {
+        document.getElementById('taskForm').reset();
+        document.getElementById('taskId').value = '';
+        if (id) {
+            fetch('/api/tasks').then(r => r.json()).then(tasks => {
+                const task = tasks.find(t => t.id === id);
+                if (task) {
+                    document.getElementById('taskId').value = task.id;
+                    document.getElementById('taskTitle').value = task.title;
+                    document.getElementById('taskDescription').value = task.description || '';
+                    document.getElementById('taskIcon').value = task.icon;
+                    document.getElementById('taskStatus').value = task.status;
+                    document.getElementById('taskDueDate').value = task.due_date || '';
+                    document.getElementById('taskModalTitle').innerText = 'Редактирование задачи';
+                    new bootstrap.Modal(document.getElementById('taskModal')).show();
+                }
+            });
+        } else {
+            document.getElementById('taskModalTitle').innerText = 'Новая задача';
+            new bootstrap.Modal(document.getElementById('taskModal')).show();
+        }
+    }
+
+    async function saveTask() {
+        const id = document.getElementById('taskId').value;
+        const data = {
+            title: document.getElementById('taskTitle').value,
+            description: document.getElementById('taskDescription').value,
+            icon: document.getElementById('taskIcon').value,
+            status: document.getElementById('taskStatus').value,
+            due_date: document.getElementById('taskDueDate').value,
+            created_date: new Date().toISOString().slice(0, 10)
+        };
+        const method = id ? 'PUT' : 'POST';
+        const url = id ? `/api/task/${id}` : '/api/task';
+        const resp = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+        if (resp.ok) {
+            bootstrap.Modal.getInstance(document.getElementById('taskModal')).hide();
+            loadTasks();
+        } else {
+            alert('Ошибка сохранения задачи');
+        }
+    }
+
+    // ---------- Поручения ----------
+    async function loadAssignments() {
+        const resp = await fetch('/api/assignments');
+        const assignments = await resp.json();
+        const container = document.getElementById('assignmentsList');
+        if (!assignments.length) {
+            container.innerHTML = '<div class="text-muted text-center py-3">Нет поручений</div>';
+            document.getElementById('assignmentsBadge').style.display = 'none';
+            return;
+        }
+        const today = new Date().toISOString().slice(0, 10);
+        let activeCount = 0;
+        let html = '';
+        assignments.forEach(a => {
+            let cardClass = 'assignment-card';
+            let isOverdue = (a.deadline < today && !a.is_completed);
+            if (a.is_completed) cardClass += ' assignment-completed';
+            else if (isOverdue) cardClass += ' assignment-overdue';
+            else cardClass += ' assignment-active';
+            if (!a.is_completed) activeCount++;
+            html += `<div class="${cardClass}">
+                <div class="d-flex justify-content-between">
+                    <div><strong>${escapeHtml(a.title)}</strong></div>
+                    <div>
+                        ${!a.is_completed && a.author_id == currentUserId ? `<button class="btn btn-sm btn-outline-primary extend-deadline" data-id="${a.id}">📅 Продлить</button>` : ''}
+                        ${a.author_id == currentUserId ? `<button class="btn btn-sm btn-outline-secondary edit-assignment" data-id="${a.id}">✏️</button>` : ''}
+                        ${a.author_id == currentUserId ? `<button class="btn btn-sm btn-outline-danger delete-assignment" data-id="${a.id}">🗑️</button>` : ''}
+                    </div>
+                </div>
+                <div class="small text-muted">От: ${a.author_name} | Отв: ${a.responsible_name} | Контр: ${a.controller_name || '—'}</div>
+                <div class="small">Создано: ${a.created_date} | Срок: ${a.deadline} ${isOverdue ? '<span class="text-danger"> (просрочено!)</span>' : ''}</div>
+                <div class="small">Статус: ${a.is_completed ? '<span class="text-success">Выполнено</span>' : '<span class="text-primary">Активно</span>'}</div>
+                <div class="mt-1">${escapeHtml(a.description)}</div>
+            </div>`;
+        });
+        container.innerHTML = html;
+        if (activeCount > 0) {
+            document.getElementById('assignmentsBadge').innerText = activeCount;
+            document.getElementById('assignmentsBadge').style.display = 'inline-block';
+        } else {
+            document.getElementById('assignmentsBadge').style.display = 'none';
+        }
+        document.querySelectorAll('.edit-assignment').forEach(btn => btn.addEventListener('click', () => openAssignmentModal(parseInt(btn.dataset.id))));
+        document.querySelectorAll('.delete-assignment').forEach(btn => btn.addEventListener('click', async () => {
+            if (confirm('Удалить поручение?')) {
+                await fetch(`/api/assignment/${btn.dataset.id}`, { method: 'DELETE' });
+                loadAssignments();
+            }
+        }));
+        document.querySelectorAll('.extend-deadline').forEach(btn => btn.addEventListener('click', async () => {
+            let newDeadline = prompt('Новая дата срока (ГГГГ-ММ-ДД):');
+            if (newDeadline) {
+                await fetch(`/api/assignment/${btn.dataset.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ deadline: newDeadline })
+                });
+                loadAssignments();
+            }
+        }));
+    }
+
+    async function openAssignmentModal(id = null) {
+        await loadEmployees();
+        const employees = await fetch('/api/employees').then(r => r.json());
+        const responsibleSelect = document.getElementById('assignmentResponsible');
+        const controllerSelect = document.getElementById('assignmentController');
+        responsibleSelect.innerHTML = '';
+        controllerSelect.innerHTML = '<option value="">-- не выбран --</option>';
+        employees.forEach(emp => {
+            const opt = document.createElement('option');
+            opt.value = emp.id;
+            opt.textContent = emp.full_name;
+            responsibleSelect.appendChild(opt.cloneNode(true));
+            controllerSelect.appendChild(opt.cloneNode(true));
+        });
+        document.getElementById('assignmentForm').reset();
+        document.getElementById('assignmentId').value = '';
+        document.getElementById('assignmentCompleted').checked = false;
+        if (id) {
+            const respAll = await fetch('/api/assignments');
+            const assignments = await respAll.json();
+            const a = assignments.find(a => a.id === id);
+            if (a) {
+                document.getElementById('assignmentId').value = a.id;
+                document.getElementById('assignmentTitle').value = a.title;
+                document.getElementById('assignmentDescription').value = a.description || '';
+                document.getElementById('assignmentResponsible').value = a.responsible_id;
+                document.getElementById('assignmentController').value = a.controller_id || '';
+                document.getElementById('assignmentDeadline').value = a.deadline;
+                document.getElementById('assignmentCompleted').checked = a.is_completed;
+                document.getElementById('assignmentModalTitle').innerText = 'Редактирование поручения';
+                new bootstrap.Modal(document.getElementById('assignmentModal')).show();
+            }
+        } else {
+            document.getElementById('assignmentModalTitle').innerText = 'Новое поручение';
+            new bootstrap.Modal(document.getElementById('assignmentModal')).show();
+        }
+    }
+
+    async function saveAssignment() {
+        const id = document.getElementById('assignmentId').value;
+        const data = {
+            title: document.getElementById('assignmentTitle').value,
+            description: document.getElementById('assignmentDescription').value,
+            responsible_id: parseInt(document.getElementById('assignmentResponsible').value),
+            controller_id: document.getElementById('assignmentController').value ? parseInt(document.getElementById('assignmentController').value) : null,
+            deadline: document.getElementById('assignmentDeadline').value,
+            is_completed: document.getElementById('assignmentCompleted').checked
+        };
+        const method = id ? 'PUT' : 'POST';
+        const url = id ? `/api/assignment/${id}` : '/api/assignment';
+        const resp = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+        if (resp.ok) {
+            bootstrap.Modal.getInstance(document.getElementById('assignmentModal')).hide();
+            loadAssignments();
+        } else {
+            alert('Ошибка сохранения поручения');
+        }
+    }
+
+    // ---------- Инициализация ----------
+    const currentUserId = {{ session['user_id'] }}; 
+    todayBtn.addEventListener('click', () => { currentMode = 'period'; currentPeriod = 'today'; setActivePeriodBtn('today'); loadEvents(); });
+    monthBtn.addEventListener('click', () => { currentMode = 'period'; currentPeriod = 'month'; setActivePeriodBtn('month'); loadEvents(); });
+    yearBtn.addEventListener('click', () => { currentMode = 'period'; currentPeriod = 'year'; setActivePeriodBtn('year'); loadEvents(); });
+    applyDateBtn.addEventListener('click', () => { if (customDateInput.value) { currentMode = 'custom'; customDate = customDateInput.value; loadEvents(); } else alert('Выберите дату'); });
+    resetDateBtn.addEventListener('click', () => { currentMode = 'period'; currentPeriod = 'today'; customDateInput.value = ''; setActivePeriodBtn('today'); loadEvents(); });
+
+    document.getElementById('taskStatusFilter').addEventListener('change', loadTasks);
+    document.getElementById('addTaskBtn').addEventListener('click', () => openTaskModal(null));
+    document.getElementById('saveTaskBtn').addEventListener('click', saveTask);
+    document.getElementById('addAssignmentBtn').addEventListener('click', () => openAssignmentModal(null));
+    document.getElementById('saveAssignmentBtn').addEventListener('click', saveAssignment);
+
+    loadEvents();
+    loadTasks();
+    loadAssignments();
+</script>
+</body>
+</html>

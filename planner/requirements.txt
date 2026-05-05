@@ -3,4 +3,4 @@ Flask-SQLAlchemy==3.0.5
 pandas>=2.2.0
 openpyxl==3.1.2
 psycopg2-binary
-gunicorn==20.1.0
+gunicorn>=22.0.0

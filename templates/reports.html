@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Отчёты • Планер техникума</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .report-card { border-left: 4px solid #0d6efd; margin-bottom: 1rem; }
+        .report-card .card-body { padding: 1rem; }
+        .run-report, .export-report { margin-top: 0.5rem; }
+    </style>
+</head>
+<body>
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="bi bi-bar-chart-fill"></i> Система отчётов</h1>
+        <div><a href="/dashboard" class="btn btn-outline-secondary">← Назад в дашборд</a></div>
+    </div>
+
+    <div class="row g-3">
+        <!-- 1. По статусу мероприятия -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card report-card">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-tag"></i> По статусу мероприятия</h5>
+                    <select id="statusSelect" class="form-select mt-2">
+                        <option value="plan">📋 Запланировано</option>
+                        <option value="done">✅ Завершено</option>
+                        <option value="postponed">🔄 Перенесено</option>
+                        <option value="cancelled">❌ Отменено</option>
+                    </select>
+                    <button class="btn btn-primary run-report" data-type="status">Сформировать</button>
+                    <button class="btn btn-success export-report" data-type="status">📎 Экспорт в Excel</button>
+                </div>
+            </div>
+        </div>
+        <!-- 2. По ответственному -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card report-card">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-person-badge"></i> По ответственному</h5>
+                    <select id="responsibleSelect" class="form-select mt-2"></select>
+                    <button class="btn btn-primary run-report" data-type="responsible">Сформировать</button>
+                    <button class="btn btn-success export-report" data-type="responsible">📎 Экспорт в Excel</button>
+                </div>
+            </div>
+        </div>
+        <!-- 3. По контролирующему -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card report-card">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-eye-fill"></i> По контролирующему</h5>
+                    <select id="controllerSelect" class="form-select mt-2"></select>
+                    <button class="btn btn-primary run-report" data-type="controller">Сформировать</button>
+                    <button class="btn btn-success export-report" data-type="controller">📎 Экспорт в Excel</button>
+                </div>
+            </div>
+        </div>
+        <!-- 4. По интервалу дат -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card report-card">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-calendar-range"></i> По интервалу дат</h5>
+                    <label>От:</label><input type="date" id="dateFrom" class="form-control mb-2">
+                    <label>До:</label><input type="date" id="dateTo" class="form-control mb-2">
+                    <button class="btn btn-primary run-report" data-type="date_interval">Сформировать</button>
+                    <button class="btn btn-success export-report" data-type="date_interval">📎 Экспорт в Excel</button>
+                </div>
+            </div>
+        </div>
+        <!-- 5. По категории -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card report-card">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-folder"></i> По категории</h5>
+                    <select id="categorySelect" class="form-select mt-2">
+                        <option value="general">🏛 Общетехникумовские</option>
+                        <option value="career">🎓 Профориентация</option>
+                        <option value="external">🌍 Внешние мероприятия</option>
+                        <option value="research">🔬 НИС / Конкурсы / Олимпиады</option>
+                    </select>
+                    <button class="btn btn-primary run-report" data-type="category">Сформировать</button>
+                    <button class="btn btn-success export-report" data-type="category">📎 Экспорт в Excel</button>
+                </div>
+            </div>
+        </div>
+        <!-- 6. По службе -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card report-card">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-building"></i> По службе</h5>
+                    <select id="serviceSelect" class="form-select mt-2">
+                        <option value="general">🏛 Общетехникумовская</option>
+                        <option value="career">🎓 Профориентация</option>
+                        <option value="admin">🏢 Административно-хозяйственная</option>
+                        <option value="social-ped">🤝 Социально-педагогическая</option>
+                        <option value="methodical">📚 Учебно-методический отдел</option>
+                        <option value="bas">✈️ БАС-центр</option>
+                        <option value="external">🌍 Внешние мероприятия</option>
+                        <option value="council">👥 Совет руководства</option>
+                        <option value="ict">💻 Отдел ИКТ</option>
+                        <option value="academic">📖 Учебная служба</option>
+                        <option value="physical">🏋️ Физкультура</option>
+                        <option value="organizational">📋 Организационная работа</option>
+                    </select>
+                    <button class="btn btn-primary run-report" data-type="service">Сформировать</button>
+                    <button class="btn btn-success export-report" data-type="service">📎 Экспорт в Excel</button>
+                </div>
+            </div>
+        </div>
+        <!-- 7. Произвольная выборка -->
+        <div class="col-md-12">
+            <div class="card report-card">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-search"></i> Произвольная выборка</h5>
+                    <div class="row">
+                        <div class="col-md-3"><input type="text" class="form-control" id="filterTitle" placeholder="Название содержит"></div>
+                        <div class="col-md-3"><input type="date" class="form-control" id="filterDateFrom" placeholder="Дата от"></div>
+                        <div class="col-md-3"><input type="date" class="form-control" id="filterDateTo" placeholder="Дата до"></div>
+                        <div class="col-md-3"><select id="filterStatus" class="form-select"><option value="">Любой статус</option><option value="plan">Запланировано</option><option value="done">Завершено</option><option value="postponed">Перенесено</option><option value="cancelled">Отменено</option></select></div>
+                    </div>
+                    <div class="row mt-2">
+                        <div class="col-md-4"><select id="filterResponsible" class="form-select"><option value="">Любой ответственный</option></select></div>
+                        <div class="col-md-4"><select id="filterController" class="form-select"><option value="">Любой контролирующий</option></select></div>
+                        <div class="col-md-4"><select id="filterCategory" class="form-select"><option value="">Любая категория</option><option value="general">Общетехникумовские</option><option value="career">Профориентация</option><option value="external">Внешние</option><option value="research">НИС/Конкурсы</option></select></div>
+                    </div>
+                    <div class="mt-3">
+                        <button class="btn btn-primary run-report" data-type="custom">Выполнить выборку</button>
+                        <button class="btn btn-success export-report" data-type="custom">📎 Экспорт в Excel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 8. Отчёт по поручениям -->
+        <div class="col-md-12">
+            <div class="card report-card">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-envelope"></i> Отчёт по поручениям</h5>
+                    <div class="row">
+                        <div class="col-md-3"><select id="assignmentReportStatus" class="form-select"><option value="all">Все поручения</option><option value="active">Активные</option><option value="completed">Выполненные</option></select></div>
+                        <div class="col-md-3"><select id="assignmentReportResponsible" class="form-select"><option value="">Любой ответственный</option></select></div>
+                        <div class="col-md-3"><input type="date" id="assignmentDeadlineFrom" class="form-control" placeholder="Срок от"></div>
+                        <div class="col-md-3"><input type="date" id="assignmentDeadlineTo" class="form-control" placeholder="Срок до"></div>
+                    </div>
+                    <div class="mt-3">
+                        <button class="btn btn-primary" id="runAssignmentReport">Сформировать</button>
+                        <button class="btn btn-success" id="exportAssignmentReport">📎 Экспорт в Excel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <h3>Результат отчёта</h3>
+        <div id="reportResult" class="table-responsive">Здесь появится результат</div>
+    </div>
+</div>
+
+<script>
+    // Загрузка списков сотрудников
+    async function loadEmployees() {
+        const resp = await fetch('/api/employees');
+        const employees = await resp.json();
+        const responsibleSelect = document.getElementById('responsibleSelect');
+        const controllerSelect = document.getElementById('controllerSelect');
+        const filterResponsible = document.getElementById('filterResponsible');
+        const filterController = document.getElementById('filterController');
+        const assignResp = document.getElementById('assignmentReportResponsible');
+        responsibleSelect.innerHTML = '<option value="">-- Выберите --</option>';
+        controllerSelect.innerHTML = '<option value="">-- Выберите --</option>';
+        filterResponsible.innerHTML = '<option value="">Любой ответственный</option>';
+        filterController.innerHTML = '<option value="">Любой контролирующий</option>';
+        assignResp.innerHTML = '<option value="">Любой ответственный</option>';
+        employees.forEach(emp => {
+            const opt1 = document.createElement('option'); opt1.value = emp.full_name; opt1.textContent = emp.full_name;
+            const opt2 = document.createElement('option'); opt2.value = emp.full_name; opt2.textContent = emp.full_name;
+            const opt3 = document.createElement('option'); opt3.value = emp.full_name; opt3.textContent = emp.full_name;
+            const opt4 = document.createElement('option'); opt4.value = emp.full_name; opt4.textContent = emp.full_name;
+            const opt5 = document.createElement('option'); opt5.value = emp.id; opt5.textContent = emp.full_name;
+            responsibleSelect.appendChild(opt1);
+            controllerSelect.appendChild(opt2);
+            filterResponsible.appendChild(opt3);
+            filterController.appendChild(opt4);
+            assignResp.appendChild(opt5);
+        });
+    }
+
+    function getFilters(type) {
+        let filters = {};
+        switch(type) {
+            case 'status': filters.status = document.getElementById('statusSelect').value; break;
+            case 'responsible': filters.responsible = document.getElementById('responsibleSelect').value; break;
+            case 'controller': filters.controller = document.getElementById('controllerSelect').value; break;
+            case 'date_interval':
+                filters.date_from = document.getElementById('dateFrom').value;
+                filters.date_to = document.getElementById('dateTo').value;
+                break;
+            case 'category': filters.category = document.getElementById('categorySelect').value; break;
+            case 'service': filters.service = document.getElementById('serviceSelect').value; break;
+            case 'custom':
+                filters.title = document.getElementById('filterTitle').value;
+                filters.date_from = document.getElementById('filterDateFrom').value;
+                filters.date_to = document.getElementById('filterDateTo').value;
+                filters.status = document.getElementById('filterStatus').value;
+                filters.responsible = document.getElementById('filterResponsible').value;
+                filters.controller = document.getElementById('filterController').value;
+                filters.category = document.getElementById('filterCategory').value;
+                break;
+        }
+        return filters;
+    }
+
+    async function runReport(type) {
+        const filters = getFilters(type);
+        const resp = await fetch('/api/reports', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ report_type: type, filters: filters })
+        });
+        const events = await resp.json();
+        renderTable(events);
+    }
+
+    async function exportReport(type) {
+        const filters = getFilters(type);
+        const response = await fetch('/api/reports/export', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ report_type: type, filters: filters })
+        });
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'report.xlsx';
+        a.click();
+        window.URL.revokeObjectURL(url);
+    }
+
+    function renderTable(events) {
+        const container = document.getElementById('reportResult');
+        if (!events.length) {
+            container.innerHTML = '<div class="alert alert-info">Нет мероприятий, соответствующих критериям</div>';
+            return;
+        }
+        let html = '<table class="table table-bordered table-hover"><thead class="table-dark">';
+        html += '<tr><th>ID</th><th>Название</th><th>Дата</th><th>Время</th><th>Ответственные</th><th>Контролирующие</th><th>Статус</th><th>Служба</th><th>Категория</th></tr>';
+        html += '</thead><tbody>';
+        events.forEach(ev => {
+            html += `<tr>
+                        <td>${ev.id}</td>
+                        <td>${escapeHtml(ev.title)}</td>
+                        <td>${ev.date}</td>
+                        <td>${ev.time}</td>
+                        <td>${ev.responsible.join(', ')}</td>
+                        <td>${ev.controller.join(', ')}</td>
+                        <td>${ev.status}</td>
+                        <td>${ev.service}</td>
+                        <td>${ev.category}</td>
+                    </table>`;
+        });
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    }
+
+    async function runAssignmentReport() {
+        const filters = {
+            status: document.getElementById('assignmentReportStatus').value,
+            responsible_id: document.getElementById('assignmentReportResponsible').value || null,
+            deadline_from: document.getElementById('assignmentDeadlineFrom').value,
+            deadline_to: document.getElementById('assignmentDeadlineTo').value
+        };
+        const resp = await fetch('/api/assignments-report', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify(filters)
+        });
+        const assignments = await resp.json();
+        renderAssignmentTable(assignments);
+    }
+
+    async function exportAssignmentReport() {
+        const filters = {
+            status: document.getElementById('assignmentReportStatus').value,
+            responsible_id: document.getElementById('assignmentReportResponsible').value || null,
+            deadline_from: document.getElementById('assignmentDeadlineFrom').value,
+            deadline_to: document.getElementById('assignmentDeadlineTo').value
+        };
+        const response = await fetch('/api/assignments-report/export', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify(filters)
+        });
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'assignments_report.xlsx';
+        a.click();
+        window.URL.revokeObjectURL(url);
+    }
+
+    function renderAssignmentTable(assignments) {
+        const container = document.getElementById('reportResult');
+        if (!assignments.length) {
+            container.innerHTML = '<div class="alert alert-info">Нет поручений, соответствующих критериям</div>';
+            return;
+        }
+        let html = '<table class="table table-bordered table-hover"><thead class="table-dark">';
+        html += '<tr><th>ID</th><th>Поручение</th><th>Ответственный</th><th>Контролирующий</th><th>Создано</th><th>Срок</th><th>Статус</th></tr>';
+        html += '</thead><tbody>';
+        assignments.forEach(a => {
+            html += `<tr>
+                        <td>${a.id}</td>
+                        <td>${escapeHtml(a.title)}</td>
+                        <td>${escapeHtml(a.responsible_name)}</td>
+                        <td>${escapeHtml(a.controller_name)}</td>
+                        <td>${a.created_date}</td>
+                        <td>${a.deadline}</td>
+                        <td>${a.is_completed ? 'Выполнено' : 'Активно'}</td>
+                    </tr>`;
+        });
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    }
+
+    function escapeHtml(str) { if (!str) return ''; return str.replace(/[&<>]/g, m => m === '&' ? '&amp;' : (m === '<' ? '&lt;' : '&gt;')); }
+
+    document.querySelectorAll('.run-report').forEach(btn => {
+        btn.addEventListener('click', () => runReport(btn.dataset.type));
+    });
+    document.querySelectorAll('.export-report').forEach(btn => {
+        btn.addEventListener('click', () => exportReport(btn.dataset.type));
+    });
+    document.getElementById('runAssignmentReport').addEventListener('click', runAssignmentReport);
+    document.getElementById('exportAssignmentReport').addEventListener('click', exportAssignmentReport);
+
+    loadEmployees();
+</script>
+</body>
+</html>

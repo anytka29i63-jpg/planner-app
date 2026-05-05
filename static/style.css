@@ -1,0 +1,20 @@
+* { font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+body { background: #f4f7fc; }
+.nav-pills .nav-link { border-radius: 30px; padding: 0.6rem 1.2rem; font-weight: 500; transition: all 0.2s; background-color: white; color: #1e2a3e; margin: 0 0.2rem; }
+.nav-pills .nav-link.active { background: linear-gradient(135deg, #0d6efd, #0b5ed7); color: white; box-shadow: 0 4px 10px rgba(13,110,253,0.3); }
+.event-card { background: white; border-radius: 24px; padding: 1rem; transition: transform 0.2s ease, box-shadow 0.2s; box-shadow: 0 8px 20px rgba(0,0,0,0.05); cursor: pointer; height: 100%; display: flex; flex-direction: column; border-left: 6px solid; position: relative; overflow: hidden; }
+.event-card:hover { transform: translateY(-5px); box-shadow: 0 16px 28px rgba(0,0,0,0.12); }
+.event-card.unplanned { border-left-color: #ff8c42 !important; background: #fffaf5; }
+.event-card.unplanned::after { content: "⚡"; position: absolute; top: 12px; right: 12px; font-size: 1.4rem; opacity: 0.7; }
+.card-date { font-weight: 600; font-size: 0.85rem; color: #2c3e66; background: #eef2ff; display: inline-block; padding: 0.2rem 0.7rem; border-radius: 30px; width: fit-content; margin-bottom: 0.8rem; }
+.card-title { font-weight: 700; font-size: 1.1rem; line-height: 1.35; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 8px; }
+.service-icon { font-size: 1.4rem; }
+.card-responsible { font-size: 0.8rem; color: #5a6874; margin-top: auto; display: flex; align-items: center; gap: 0.3rem; }
+.card-status { margin-top: 0.7rem; font-size: 0.75rem; font-weight: 500; }
+.status-badge { padding: 0.25rem 0.6rem; border-radius: 50px; display: inline-flex; align-items: center; gap: 0.3rem; }
+.status-done { background: #d1e7dd; color: #0f5132; }
+.status-postponed { background: #fff3cd; color: #856404; }
+.status-today { background: #cfe2ff; color: #084298; }
+.status-cancelled { background: #f8d7da; color: #842029; }
+.btn-outline-primary { border-radius: 40px; }
+#cardsContainer { min-height: 300px; }

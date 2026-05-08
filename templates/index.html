@@ -11,22 +11,47 @@
 </head>
 <body>
 <div class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <h1 class="display-5 fw-semibold">
             <i class="bi bi-calendar-week-fill text-primary"></i> Планер техникума
         </h1>
-        <div class="mt-2 mt-sm-0 d-flex gap-2 flex-wrap">
-            <a href="/all-events" class="btn btn-outline-dark">📅 Все мероприятия (сегодня/месяц)</a>
-            <a href="/dashboard" class="btn btn-outline-info"><i class="bi bi-person-circle"></i> Мой дашборд</a>
-            <button class="btn btn-success" id="addEventBtn"><i class="bi bi-plus-circle"></i> Добавить</button>
-            <button class="btn btn-outline-info" id="manageEmployeesBtn"><i class="bi bi-people"></i> Сотрудники</button>
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="/all-events" class="btn btn-outline-dark" title="Все мероприятия сегодня/месяц">📅 Все мероприятия</a>
+            <a href="/dashboard" class="btn btn-outline-info" title="Перейти в мой дашборд"><i class="bi bi-person-circle"></i> Мой дашборд</a>
+            <button class="btn btn-success" id="addEventBtn" title="Создать новое мероприятие"><i class="bi bi-plus-circle"></i> Добавить</button>
+            <button class="btn btn-outline-info" id="manageEmployeesBtn" title="Управление сотрудниками"><i class="bi bi-people"></i> Сотрудники</button>
+            <button class="btn btn-outline-primary" id="importCsvBtn" title="Импорт плана из CSV"><i class="bi bi-upload"></i> Импорт CSV</button>
             {% if user_role == 'admin' %}
-                <button class="btn btn-outline-secondary" id="importEmployeesBtn"><i class="bi bi-file-spreadsheet"></i> Импорт сотрудников</button>
-                <button class="btn btn-outline-warning" id="importUsersBtn"><i class="bi bi-person-badge"></i> Импорт пользователей</button>
-                <button class="btn btn-outline-dark" id="manageUsersBtn"><i class="bi bi-people-fill"></i> Управление пользователями</button>
+                <div class="dropdown d-inline-block">
+                    <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="adminDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        ⚙️ Управление
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="adminDropdown">
+                        <li><button class="dropdown-item" id="importEmployeesBtn"><i class="bi bi-file-spreadsheet"></i> Импорт сотрудников</button></li>
+                        <li><button class="dropdown-item" id="importUsersBtn"><i class="bi bi-person-badge"></i> Импорт пользователей</button></li>
+                        <li><button class="dropdown-item" id="manageUsersBtn"><i class="bi bi-people-fill"></i> Управление пользователями</button></li>
+                    </ul>
+                </div>
             {% endif %}
-            <button class="btn btn-outline-primary" id="importCsvBtn"><i class="bi bi-upload"></i> Импорт CSV</button>
-            <a href="/logout" class="btn btn-outline-danger"><i class="bi bi-box-arrow-right"></i> Выйти</a>
+            <a href="/logout" class="btn btn-outline-danger" title="Выйти из системы"><i class="bi bi-box-arrow-right"></i> Выйти</a>
+        </div>
+    </div>
+
+    <!-- Панель поиска, сортировки и фильтра -->
+    <div class="control-panel">
+        <div class="search-sort-group">
+            <input type="text" id="searchInput" class="form-control search-input" placeholder="🔍 Поиск по названию, описанию, ответственным...">
+            <select id="sortSelect" class="form-select sort-select">
+                <option value="date_asc">Сортировать по дате (старые сначала)</option>
+                <option value="date_desc" selected>Сортировать по дате (новые сначала)</option>
+                <option value="title_asc">По названию (А-Я)</option>
+                <option value="title_desc">По названию (Я-А)</option>
+            </select>
+            <div class="filter-buttons">
+                <button id="filterAllBtn" class="btn btn-outline-secondary active" data-filter="all">Все</button>
+                <button id="filterUpcomingBtn" class="btn btn-outline-secondary" data-filter="upcoming">Предстоящие</button>
+                <button id="filterPastBtn" class="btn btn-outline-secondary" data-filter="past">Прошедшие</button>
+            </div>
         </div>
     </div>
 
@@ -38,8 +63,10 @@
     </div>
 
     <div id="cardsContainer" class="row g-4"></div>
-    <div id="emptyMessage" class="text-center text-muted py-5 d-none">
-        <i class="bi bi-inbox fs-1"></i><p class="mt-2">Нет мероприятий в этой категории.</p>
+    <div id="emptyMessage" class="empty-state d-none">
+        <i class="bi bi-calendar-plus"></i>
+        <p>Нет мероприятий в этой категории.</p>
+        <button class="btn btn-primary" id="emptyAddEventBtn">➕ Добавить мероприятие</button>
     </div>
 </div>
 
@@ -222,7 +249,7 @@
     </div>
 </div>
 
-<!-- Модальные окна только для администратора -->
+<!-- Модальные окна для администратора (импорт сотрудников, пользователей, управление пользователями) -->
 {% if user_role == 'admin' %}
 <div class="modal fade" id="importEmployeesModal" tabindex="-1">
     <div class="modal-dialog">

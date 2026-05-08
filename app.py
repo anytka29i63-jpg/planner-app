@@ -648,11 +648,15 @@ def delete_task(id):
 @app.route('/api/assignments')
 @login_required
 def get_assignments():
-    user_id = session['user_id']
+    user = User.query.get(session['user_id'])
+    # Ищем поручения, где:
+    # - автор = текущий пользователь
+    # - ИЛИ ответственный (по ФИО) = ФИО текущего пользователя
+    # - ИЛИ контролирующий (по ФИО) = ФИО текущего пользователя
     assignments = Assignment.query.filter(
-        (Assignment.author_id == user_id) |
-        (Assignment.responsible_id == user_id) |
-        (Assignment.controller_id == user_id)
+        (Assignment.author_id == user.id) |
+        (Assignment.responsible.has(full_name=user.full_name)) |
+        (Assignment.controller.has(full_name=user.full_name))
     ).order_by(Assignment.deadline).all()
     return jsonify([a.to_dict() for a in assignments])
 

@@ -5,24 +5,48 @@ from datetime import datetime, timedelta
 from functools import wraps
 import io
 import os
+import sys
+import re
 
 app = Flask(__name__)
 
+# ---------- Функция для экранирования спецсимволов в пароле ----------
+def escape_url_password(url):
+    """Заменяет спецсимволы в пароле на их URL-коды, например ! → %21"""
+    if not url:
+        return url
+    # Ищем пароль между :// и @
+    match = re.search(r'://([^:]+):([^@]+)@', url)
+    if match:
+        user = match.group(1)
+        password = match.group(2)
+        # URL-кодируем пароль (кроме уже закодированных %)
+        encoded_password = ''
+        for ch in password:
+            if ch == '%':
+                encoded_password += ch
+            elif ch in '!@#$%^&*()[]{}|;:,<>/?`~ ':
+                encoded_password += f'%{ord(ch):02X}'
+            else:
+                encoded_password += ch
+        # Собираем строку заново
+        return re.sub(r'://[^:]+:[^@]+@', f'://{user}:{encoded_password}@', url)
+    return url
+
 # ---------- Настройка базы данных и секретного ключа ----------
-# Берём строку подключения из переменной окружения (для облака)
 database_url = os.environ.get('DATABASE_URL')
 if database_url:
     # Для совместимости со старыми форматами заменяем postgres:// → postgresql://
     if database_url.startswith('postgres://'):
         database_url = database_url.replace('postgres://', 'postgresql://', 1)
-    # Экранируем спецсимволы в пароле (например, '!' → '%21')
-    # Такая замена нужна, если пароль содержит символы, недопустимые в URL.
-    # Однако psycopg2-binary сам справляется с паролем как есть через переменную окружения.
-    # Оставляем без изменений.
+    # Экранируем спецсимволы в пароле
+    database_url = escape_url_password(database_url)
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+    print(f"Подключение к PostgreSQL: {database_url[:30]}... (пароль скрыт)", file=sys.stderr)
 else:
     # Локальная разработка – SQLite
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///planner.db'
+    print("Используется SQLite", file=sys.stderr)
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.secret_key = os.environ.get('SECRET_KEY', 'supersecretkey-change-this-in-production')
@@ -101,6 +125,7 @@ with app.app_context():
             sample_event.responsible_employees.append(ivanov)
         db.session.add(sample_event)
         db.session.commit()
+        print("Демо-данные созданы", file=sys.stderr)
 
 # ---------- Маршруты ----------
 @app.route('/login', methods=['GET', 'POST'])

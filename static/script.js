@@ -5,6 +5,11 @@ let employeesList = [];
 
 let modalEvent, modalEmployees, modalEmployeeEdit, importModal, importEmployeesModal, importUsersModal, usersModal, userEditModal;
 
+// Новые глобальные переменные для поиска/сортировки/фильтра
+let currentSearchTerm = '';
+let currentSort = 'date_desc';
+let currentTimeFilter = 'all';
+
 document.addEventListener('DOMContentLoaded', async () => {
     modalEvent = new bootstrap.Modal(document.getElementById('eventModal'));
     modalEmployees = new bootstrap.Modal(document.getElementById('employeesModal'));
@@ -73,8 +78,138 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('saveUserBtn').addEventListener('click', saveUser);
     }
 
+    // Обработчики поиска, сортировки, фильтра
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            currentSearchTerm = e.target.value.toLowerCase();
+            applyLocalFilters();
+        });
+    }
+    const sortSelect = document.getElementById('sortSelect');
+    if (sortSelect) {
+        sortSelect.addEventListener('change', (e) => {
+            currentSort = e.target.value;
+            applyLocalFilters();
+        });
+    }
+    const filterAllBtn = document.getElementById('filterAllBtn');
+    const filterUpcomingBtn = document.getElementById('filterUpcomingBtn');
+    const filterPastBtn = document.getElementById('filterPastBtn');
+    if (filterAllBtn) {
+        filterAllBtn.addEventListener('click', () => {
+            currentTimeFilter = 'all';
+            document.querySelectorAll('.filter-buttons .btn').forEach(btn => btn.classList.remove('active'));
+            filterAllBtn.classList.add('active');
+            applyLocalFilters();
+        });
+        filterUpcomingBtn.addEventListener('click', () => {
+            currentTimeFilter = 'upcoming';
+            document.querySelectorAll('.filter-buttons .btn').forEach(btn => btn.classList.remove('active'));
+            filterUpcomingBtn.classList.add('active');
+            applyLocalFilters();
+        });
+        filterPastBtn.addEventListener('click', () => {
+            currentTimeFilter = 'past';
+            document.querySelectorAll('.filter-buttons .btn').forEach(btn => btn.classList.remove('active'));
+            filterPastBtn.classList.add('active');
+            applyLocalFilters();
+        });
+    }
+
     loadEvents();
 });
+
+// Функция локальной фильтрации, сортировки и поиска
+function applyLocalFilters() {
+    let filtered = [...currentEvents];
+    if (currentSearchTerm) {
+        filtered = filtered.filter(ev =>
+            ev.title.toLowerCase().includes(currentSearchTerm) ||
+            (ev.description && ev.description.toLowerCase().includes(currentSearchTerm)) ||
+            ev.responsible.some(r => r.toLowerCase().includes(currentSearchTerm))
+        );
+    }
+    const today = new Date().toISOString().slice(0,10);
+    if (currentTimeFilter === 'upcoming') {
+        filtered = filtered.filter(ev => ev.date >= today);
+    } else if (currentTimeFilter === 'past') {
+        filtered = filtered.filter(ev => ev.date < today);
+    }
+    filtered.sort((a, b) => {
+        if (currentSort === 'date_desc') return b.date.localeCompare(a.date);
+        if (currentSort === 'date_asc') return a.date.localeCompare(b.date);
+        if (currentSort === 'title_asc') return a.title.localeCompare(b.title);
+        if (currentSort === 'title_desc') return b.title.localeCompare(a.title);
+        return 0;
+    });
+    renderCards(filtered);
+}
+
+// Переопределяем renderCards (сохраняя остальные функции)
+renderCards = function(events) {
+    const container = document.getElementById('cardsContainer');
+    container.innerHTML = '';
+    const today = new Date().toISOString().slice(0,10);
+    const serviceIcons = { "general":"🏛️","career":"🎓","admin":"🏢","social-ped":"🤝","methodical":"📚","bas":"✈️","external":"🌍","council":"👥","ict":"💻","academic":"📖","physical":"🏋️","organizational":"📋" };
+    events.forEach(ev => {
+        const col = document.createElement('div');
+        col.className = 'col-md-6 col-lg-4 col-xl-3';
+        const card = document.createElement('div');
+        card.className = `event-card ${!ev.planned ? 'unplanned' : ''}`;
+        card.setAttribute('data-category', ev.category);
+        card.setAttribute('data-service', ev.service);
+        // левая граница – если задан цвет мероприятия, используем его, иначе цвет по категории (CSS-классы)
+        if (ev.color && ev.color !== '#ffffff') {
+            card.style.borderLeftColor = ev.color;
+        }
+        let dateObj = new Date(ev.date);
+        let formattedDate = dateObj.toLocaleDateString('ru-RU', { day:'numeric', month:'long' });
+        if (ev.date) formattedDate = `${formattedDate} ${ev.time ? 'в ' + ev.time.slice(0,5) : ''}`;
+        let effectiveStatus = ev.status;
+        if (ev.date === today && !['done','cancelled','postponed'].includes(ev.status)) effectiveStatus = 'today';
+        let statusIcon = '', statusClass = '';
+        switch(effectiveStatus) {
+            case 'done': statusIcon='✅'; statusClass='status-done'; break;
+            case 'postponed': statusIcon='🔄'; statusClass='status-postponed'; break;
+            case 'today': statusIcon='📅'; statusClass='status-today'; break;
+            case 'cancelled': statusIcon='❌'; statusClass='status-cancelled'; break;
+            default: statusIcon='📋'; statusClass='status-plan';
+        }
+        const statusText = { done:'Завершено', postponed:'Перенесено', today:'Сегодня', cancelled:'Отменено', plan:'Запланировано' }[effectiveStatus] || '';
+        const icon = serviceIcons[ev.service] || '📌';
+        const responsibleText = Array.isArray(ev.responsible) ? ev.responsible.join(', ') : ev.responsible;
+        card.innerHTML = `<div class="card-date">📅 ${formattedDate}</div><div class="card-title"><span class="service-icon">${icon}</span> <span>${escapeHtml(ev.title)}</span></div><div class="card-responsible"><i class="bi bi-person-badge"></i> ${escapeHtml(responsibleText)}</div><div class="card-status"><span class="status-badge ${statusClass}">${statusIcon} ${statusText}</span></div>`;
+        card.addEventListener('click', (e) => { e.stopPropagation(); openEditModal(ev.id); });
+        col.appendChild(card);
+        container.appendChild(col);
+    });
+    const emptyMsgDiv = document.getElementById('emptyMessage');
+    if (events.length === 0) {
+        emptyMsgDiv.classList.remove('d-none');
+        const addBtn = document.getElementById('emptyAddEventBtn');
+        if (addBtn) addBtn.onclick = () => openEditModal(null);
+    } else {
+        emptyMsgDiv.classList.add('d-none');
+    }
+};
+
+// Переопределяем loadEvents с использованием локальной фильтрации
+loadEvents = async function() {
+    const loading = document.getElementById('loadingIndicator');
+    const container = document.getElementById('cardsContainer');
+    const emptyMsg = document.getElementById('emptyMessage');
+    loading.classList.remove('d-none');
+    container.innerHTML = '';
+    emptyMsg.classList.add('d-none');
+    let url = (currentFilterType === 'current-month') ? '/api/events/current-month' : `/api/events?filter_by=${currentFilterType}&value=${currentFilterValue}`;
+    const resp = await fetch(url);
+    const events = await resp.json();
+    currentEvents = events;
+    loading.classList.add('d-none');
+    if (!events.length) { emptyMsg.classList.remove('d-none'); return; }
+    applyLocalFilters();
+};
 
 async function loadEmployees() {
     try {
@@ -117,56 +252,6 @@ function initSearchFilters() {
     }
     responsibleSearch.addEventListener('input', () => filterSelect(responsibleSearch, responsibleSelect));
     controllerSearch.addEventListener('input', () => filterSelect(controllerSearch, controllerSelect));
-}
-
-async function loadEvents() {
-    const loading = document.getElementById('loadingIndicator');
-    const container = document.getElementById('cardsContainer');
-    const emptyMsg = document.getElementById('emptyMessage');
-    loading.classList.remove('d-none');
-    container.innerHTML = '';
-    emptyMsg.classList.add('d-none');
-    let url = (currentFilterType === 'current-month') ? '/api/events/current-month' : `/api/events?filter_by=${currentFilterType}&value=${currentFilterValue}`;
-    const resp = await fetch(url);
-    const events = await resp.json();
-    currentEvents = events;
-    loading.classList.add('d-none');
-    if (!events.length) { emptyMsg.classList.remove('d-none'); return; }
-    renderCards(events);
-}
-
-function renderCards(events) {
-    const container = document.getElementById('cardsContainer');
-    container.innerHTML = '';
-    const today = new Date().toISOString().slice(0,10);
-    const serviceIcons = { "general":"🏛️","career":"🎓","admin":"🏢","social-ped":"🤝","methodical":"📚","bas":"✈️","external":"🌍","council":"👥","ict":"💻","academic":"📖","physical":"🏋️","organizational":"📋" };
-    events.forEach(ev => {
-        const col = document.createElement('div');
-        col.className = 'col-md-6 col-lg-4 col-xl-3';
-        const card = document.createElement('div');
-        card.className = `event-card ${!ev.planned ? 'unplanned' : ''}`;
-        card.style.borderLeftColor = ev.color || '#0d6efd';
-        let dateObj = new Date(ev.date);
-        let formattedDate = dateObj.toLocaleDateString('ru-RU', { day:'numeric', month:'long' });
-        if (ev.date) formattedDate = `${formattedDate} ${ev.time ? 'в ' + ev.time.slice(0,5) : ''}`;
-        let effectiveStatus = ev.status;
-        if (ev.date === today && !['done','cancelled','postponed'].includes(ev.status)) effectiveStatus = 'today';
-        let statusIcon = '', statusClass = '';
-        switch(effectiveStatus) {
-            case 'done': statusIcon='✅'; statusClass='status-done'; break;
-            case 'postponed': statusIcon='🔄'; statusClass='status-postponed'; break;
-            case 'today': statusIcon='📅'; statusClass='status-today'; break;
-            case 'cancelled': statusIcon='❌'; statusClass='status-cancelled'; break;
-            default: statusIcon='📋'; statusClass='status-plan';
-        }
-        const statusText = { done:'Завершено', postponed:'Перенесено', today:'Сегодня', cancelled:'Отменено', plan:'Запланировано' }[effectiveStatus] || '';
-        const icon = serviceIcons[ev.service] || '📌';
-        const responsibleText = Array.isArray(ev.responsible) ? ev.responsible.join(', ') : ev.responsible;
-        card.innerHTML = `<div class="card-date">📅 ${formattedDate}</div><div class="card-title"><span class="service-icon">${icon}</span> <span>${escapeHtml(ev.title)}</span></div><div class="card-responsible"><i class="bi bi-person-badge"></i> ${escapeHtml(responsibleText)}</div><div class="card-status"><span class="status-badge ${statusClass}">${statusIcon} ${statusText}</span></div>`;
-        card.addEventListener('click', (e) => { e.stopPropagation(); openEditModal(ev.id); });
-        col.appendChild(card);
-        container.appendChild(col);
-    });
 }
 
 function openEditModal(id) {
@@ -393,9 +478,8 @@ async function loadUsersTable() {
         delBtn.innerHTML = '<i class="bi bi-trash"></i>';
         delBtn.onclick = async () => {
             if (confirm(`Удалить пользователя ${user.login}?`)) {
-                const resp = await fetch(`/api/admin/user/${user.id}`, { method: 'DELETE' });
-                if (resp.ok) await loadUsersTable();
-                else alert('Ошибка удаления');
+                await fetch(`/api/admin/user/${user.id}`, { method: 'DELETE' });
+                await loadUsersTable();
             }
         };
         actions.appendChild(editBtn);

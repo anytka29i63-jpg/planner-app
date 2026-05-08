@@ -4,11 +4,28 @@ import pandas as pd
 from datetime import datetime, timedelta
 from functools import wraps
 import io
+import os
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///planner.db'
+
+# ---------- Настройка базы данных и секретного ключа ----------
+# Берём строку подключения из переменной окружения (для облака)
+database_url = os.environ.get('DATABASE_URL')
+if database_url:
+    # Для совместимости со старыми форматами заменяем postgres:// → postgresql://
+    if database_url.startswith('postgres://'):
+        database_url = database_url.replace('postgres://', 'postgresql://', 1)
+    # Экранируем спецсимволы в пароле (например, '!' → '%21')
+    # Такая замена нужна, если пароль содержит символы, недопустимые в URL.
+    # Однако psycopg2-binary сам справляется с паролем как есть через переменную окружения.
+    # Оставляем без изменений.
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+else:
+    # Локальная разработка – SQLite
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///planner.db'
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.secret_key = 'supersecretkey-change-this-in-production'
+app.secret_key = os.environ.get('SECRET_KEY', 'supersecretkey-change-this-in-production')
 
 db.init_app(app)
 
@@ -496,7 +513,7 @@ def admin_delete_user(id):
     db.session.commit()
     return jsonify({'status': 'ok'})
 
-# ---------- Дашборд пользователя (мероприятия) ----------
+# ---------- Дашборд пользователя ----------
 @app.route('/api/user/dashboard')
 @login_required
 def user_dashboard():

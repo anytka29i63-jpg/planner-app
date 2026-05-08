@@ -1,4 +1,4 @@
-/* ---------- Общие переменные и сброс ---------- */
+/* ---------- Общие переменные ---------- */
 :root {
     --primary: #0d6efd;
     --primary-dark: #0b5ed7;
@@ -6,18 +6,14 @@
     --success: #198754;
     --danger: #dc3545;
     --warning: #ffc107;
-    --info: #0dcaf0;
-    --light: #f8f9fa;
-    --dark: #212529;
     --gray-100: #f8f9fc;
     --gray-200: #eef2f6;
     --gray-300: #dee2e6;
-    --gray-400: #ced4da;
-    --border-radius-sm: 0.5rem;
-    --border-radius-md: 0.75rem;
     --border-radius-lg: 1rem;
+    --border-radius-md: 0.75rem;
+    --border-radius-sm: 0.5rem;
     --box-shadow-sm: 0 2px 4px rgba(0,0,0,0.02), 0 1px 2px rgba(0,0,0,0.03);
-    --box-shadow-md: 0 4px 12px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03);
+    --box-shadow-md: 0 4px 12px rgba(0,0,0,0.05);
     --box-shadow-lg: 0 8px 24px rgba(0,0,0,0.08);
     --transition: all 0.2s ease;
 }
@@ -27,20 +23,19 @@
 }
 
 body {
-    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, sans-serif;
+    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
     background: #f1f5f9;
     color: #1e293b;
     line-height: 1.5;
 }
 
-/* ---------- Основной контейнер ---------- */
 .container {
     max-width: 1440px;
     margin: 0 auto;
     padding: 2rem 1rem;
 }
 
-/* ---------- Кнопки (современные) ---------- */
+/* ---------- Кнопки ---------- */
 .btn {
     border-radius: 2rem;
     padding: 0.5rem 1.25rem;
@@ -68,7 +63,6 @@ body {
 .btn-outline-primary:hover {
     background: var(--primary);
     color: white;
-    border-color: var(--primary);
 }
 
 .btn-success {
@@ -109,37 +103,7 @@ body {
     color: white;
 }
 
-/* ---------- Вкладки (как в Notion/Trello) ---------- */
-.nav-tabs {
-    border-bottom: none;
-    gap: 0.25rem;
-    flex-wrap: wrap;
-    margin-bottom: 1.5rem;
-}
-
-.nav-tabs .nav-link {
-    border: none;
-    border-radius: 2rem;
-    padding: 0.6rem 1.2rem;
-    font-weight: 500;
-    background: transparent;
-    color: #475569;
-    transition: var(--transition);
-}
-
-.nav-tabs .nav-link:hover {
-    background: var(--gray-200);
-    color: var(--primary);
-}
-
-.nav-tabs .nav-link.active {
-    background: white;
-    color: var(--primary);
-    box-shadow: var(--box-shadow-md);
-    position: relative;
-}
-
-/* Планшетная версия вкладок (альтернативный стиль) */
+/* ---------- Вкладки (как в Notion) ---------- */
 .nav-pills .nav-link {
     border-radius: 2rem;
     padding: 0.6rem 1.2rem;
@@ -177,23 +141,11 @@ body {
     box-shadow: var(--box-shadow-lg);
 }
 
-/* Цветовая кодировка категорий (левая граница) */
-.event-card[data-category="general"] {
-    border-left-color: #0d6efd;
-}
-.event-card[data-category="career"] {
-    border-left-color: #198754;
-}
-.event-card[data-category="external"] {
-    border-left-color: #fd7e14;
-}
-.event-card[data-category="research"] {
-    border-left-color: #6f42c1;
-}
-/* Для общей службы тоже синий */
-.event-card[data-service="general"] {
-    border-left-color: #0d6efd;
-}
+/* Цветовая кодировка категорий */
+.event-card[data-category="general"] { border-left-color: #0d6efd; }
+.event-card[data-category="career"] { border-left-color: #198754; }
+.event-card[data-category="external"] { border-left-color: #fd7e14; }
+.event-card[data-category="research"] { border-left-color: #6f42c1; }
 
 .event-card.unplanned::after {
     content: "⚡";
@@ -251,7 +203,6 @@ body {
     display: inline-flex;
     align-items: center;
     gap: 0.3rem;
-    font-weight: 500;
 }
 
 .status-done { background: #d1e7dd; color: #0f5132; }
@@ -260,7 +211,7 @@ body {
 .status-cancelled { background: #f8d7da; color: #842029; }
 .status-plan { background: #e9ecef; color: #2c3e50; }
 
-/* ---------- Поиск, фильтры, панель управления ---------- */
+/* ---------- Панель управления (поиск, сортировка) ---------- */
 .control-panel {
     background: white;
     border-radius: var(--border-radius-lg);
@@ -288,7 +239,6 @@ body {
     border-radius: 2rem;
     border: 1px solid var(--gray-300);
     padding: 0.5rem 1rem;
-    transition: var(--transition);
 }
 
 .search-input:focus {
@@ -301,13 +251,6 @@ body {
     border-radius: 2rem;
     border: 1px solid var(--gray-300);
     padding: 0.5rem 1rem;
-    background: white;
-    cursor: pointer;
-}
-
-.filter-buttons {
-    display: flex;
-    gap: 0.5rem;
 }
 
 .filter-buttons .btn {
@@ -315,7 +258,7 @@ body {
     font-size: 0.9rem;
 }
 
-/* Выпадающее меню для админ-функций */
+/* Выпадающее меню */
 .dropdown-menu {
     border-radius: var(--border-radius-md);
     box-shadow: var(--box-shadow-lg);
@@ -333,7 +276,7 @@ body {
     background: var(--gray-200);
 }
 
-/* ---------- Дашборд (карточки колонок) ---------- */
+/* ---------- Дашборд ---------- */
 .dashboard-card {
     background: white;
     border-radius: var(--border-radius-lg);
@@ -356,7 +299,6 @@ body {
     margin-bottom: 1.2rem;
     padding-bottom: 0.5rem;
     border-bottom: 2px solid var(--gray-200);
-    color: #1e293b;
 }
 
 .event-time {
@@ -392,13 +334,9 @@ body {
     .tasks-table th:nth-child(5), .tasks-table td:nth-child(5) {
         display: none;
     }
-    .tasks-table th, .tasks-table td {
-        padding: 0.5rem 0.25rem;
-        font-size: 0.85rem;
-    }
 }
 
-/* ---------- Поручения (карточки с цветовой индикацией) ---------- */
+/* ---------- Поручения (цветовая индикация) ---------- */
 .assignment-card {
     background: white;
     border-radius: var(--border-radius-lg);
@@ -414,32 +352,13 @@ body {
     box-shadow: var(--box-shadow-md);
 }
 
-.assignment-active {
-    border-left-color: #0d6efd;
-    background: white;
-}
+.assignment-active { border-left-color: #0d6efd; background: white; }
+.assignment-pending_review { border-left-color: #ffc107; background: #fffef7; }
+.assignment-done { border-left-color: #198754; background: #f0fff4; }
+.assignment-rejected { border-left-color: #dc3545; background: #fff5f5; }
+.assignment-overdue { border-left-color: #dc3545; background: #fff5f5; }
 
-.assignment-pending_review {
-    border-left-color: #ffc107;
-    background: #fffef7;
-}
-
-.assignment-done {
-    border-left-color: #198754;
-    background: #f0fff4;
-}
-
-.assignment-rejected {
-    border-left-color: #dc3545;
-    background: #fff5f5;
-}
-
-.assignment-overdue {
-    border-left-color: #dc3545;
-    background: #fff5f5;
-}
-
-/* ---------- Модальные окна (улучшенные) ---------- */
+/* ---------- Модальные окна ---------- */
 .modal-content {
     border: none;
     border-radius: var(--border-radius-lg);
@@ -466,7 +385,6 @@ body {
     border-radius: var(--border-radius-md);
     border: 1px solid var(--gray-300);
     padding: 0.6rem 1rem;
-    transition: var(--transition);
 }
 
 .form-control:focus, .form-select:focus {
@@ -487,44 +405,16 @@ body {
     opacity: 0.5;
 }
 
-.empty-state p {
-    margin-bottom: 1rem;
-}
-
-/* ---------- Адаптивность (общая) ---------- */
+/* ---------- Адаптивность ---------- */
 @media (max-width: 992px) {
-    .container {
-        padding: 1rem;
-    }
-    .control-panel {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    .search-sort-group {
-        flex-direction: column;
-    }
-    .btn-group {
-        justify-content: center;
-    }
-    .nav-tabs .nav-link {
-        padding: 0.5rem 1rem;
-        font-size: 0.9rem;
-    }
-    .event-card {
-        padding: 1rem;
-    }
-    .row > .col-md-4 {
-        margin-bottom: 1rem;
-    }
+    .container { padding: 1rem; }
+    .control-panel { flex-direction: column; align-items: stretch; }
+    .search-sort-group { flex-direction: column; }
+    .btn-group { justify-content: center; }
+    .event-card { padding: 1rem; }
 }
 
 @media (max-width: 576px) {
-    .btn {
-        padding: 0.4rem 1rem;
-        font-size: 0.9rem;
-    }
-    .nav-pills .nav-link {
-        padding: 0.4rem 0.8rem;
-        font-size: 0.85rem;
-    }
+    .btn { padding: 0.4rem 1rem; font-size: 0.9rem; }
+    .nav-pills .nav-link { padding: 0.4rem 0.8rem; font-size: 0.85rem; }
 }

@@ -27,6 +27,8 @@
         .assignment-overdue { border-left: 4px solid #dc3545; background: #fff5f5; }
         .assignment-completed { border-left: 4px solid #198754; background: #f0fff4; }
         .assignment-active { border-left: 4px solid #0d6efd; background: white; }
+        .assignment-pending_review { border-left: 4px solid #ffc107; background: #fffef7; }
+        .assignment-rejected { border-left: 4px solid #dc3545; background: #fff5f5; }
         .nav-link .badge { margin-left: 6px; }
     </style>
 </head>
@@ -59,7 +61,6 @@
     </ul>
 
     <div class="tab-content">
-        <!-- Вкладка мероприятий (без изменений) -->
         <div class="tab-pane fade show active" id="events" role="tabpanel">
             <div class="period-selector">
                 <button class="btn btn-primary period-btn" data-period="today">Сегодня</button>
@@ -79,7 +80,6 @@
             </div>
         </div>
 
-        <!-- Вкладка "Мои задачи" (исправленная) -->
         <div class="tab-pane fade" id="tasks" role="tabpanel">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <div>
@@ -97,19 +97,16 @@
             <div id="tasksList" class="mt-3">Загрузка...</div>
         </div>
 
-        <!-- Вкладка "Поручения" (без изменений) -->
         <div class="tab-pane fade" id="assignments" role="tabpanel">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <div>
-                    <button class="btn btn-primary" id="addAssignmentBtn"><i class="bi bi-send"></i> Дать поручение</button>
-                </div>
+                <button class="btn btn-primary" id="addAssignmentBtn"><i class="bi bi-send"></i> Дать поручение</button>
             </div>
             <div id="assignmentsList" class="mt-3">Загрузка...</div>
         </div>
     </div>
 </div>
 
-<!-- Модальные окна (без изменений) -->
+<!-- Модальное окно задачи -->
 <div class="modal fade" id="taskModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -139,6 +136,7 @@
     </div>
 </div>
 
+<!-- Модальное окно поручения -->
 <div class="modal fade" id="assignmentModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -161,6 +159,14 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+    // Инициализация tooltips
+    document.addEventListener('DOMContentLoaded', function() {
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[title]'));
+        tooltipTriggerList.forEach(function (tooltipTriggerEl) {
+            new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    });
+
     // ---------- Данные о сотрудниках ----------
     let employees = [];
     async function loadEmployees() {
@@ -238,7 +244,7 @@
     function getStatusText(status) { return { done:'Завершено', postponed:'Перенесено', today:'Сегодня', cancelled:'Отменено', plan:'Запланировано' }[status] || status; }
     function escapeHtml(str) { if (!str) return ''; return str.replace(/[&<>]/g, m => m === '&' ? '&amp;' : (m === '<' ? '&lt;' : '&gt;')); }
 
-    // ---------- Задачи (исправленная версия) ----------
+    // ---------- Задачи ----------
     async function loadTasks() {
         const resp = await fetch('/api/tasks');
         if (!resp.ok) {
@@ -273,14 +279,13 @@
                         <td>${t.created_date}</td>
                         <td>${t.due_date || '—'}</td>
                         <td>
-                            <button class="btn btn-sm btn-outline-primary edit-task" data-id="${t.id}">✏️</button>
-                            <button class="btn btn-sm btn-outline-danger delete-task" data-id="${t.id}">🗑️</button>
+                            <button class="btn btn-sm btn-outline-primary edit-task" data-id="${t.id}" title="Редактировать">✏️</button>
+                            <button class="btn btn-sm btn-outline-danger delete-task" data-id="${t.id}" title="Удалить">🗑️</button>
                         </td>
                     </tr>`;
         });
         html += '</tbody></table></div>';
         container.innerHTML = html;
-        // Привязка событий после рендера
         document.querySelectorAll('.edit-task').forEach(btn => btn.addEventListener('click', () => openTaskModal(parseInt(btn.dataset.id))));
         document.querySelectorAll('.delete-task').forEach(btn => btn.addEventListener('click', async () => {
             if (confirm('Удалить задачу?')) {
@@ -294,7 +299,7 @@
         document.getElementById('taskForm').reset();
         document.getElementById('taskId').value = '';
         if (id) {
-            fetch('/api/tasks').then(r => r.json()).then(tasks => {
+            fetch('/api/tasks').then(r=>r.json()).then(tasks => {
                 const task = tasks.find(t => t.id === id);
                 if (task) {
                     document.getElementById('taskId').value = task.id;
@@ -321,7 +326,7 @@
             icon: document.getElementById('taskIcon').value,
             status: document.getElementById('taskStatus').value,
             due_date: document.getElementById('taskDueDate').value,
-            created_date: new Date().toISOString().slice(0, 10)
+            created_date: new Date().toISOString().slice(0,10)
         };
         const method = id ? 'PUT' : 'POST';
         const url = id ? `/api/task/${id}` : '/api/task';
@@ -329,12 +334,13 @@
         if (resp.ok) {
             bootstrap.Modal.getInstance(document.getElementById('taskModal')).hide();
             loadTasks();
-        } else {
-            alert('Ошибка сохранения задачи');
-        }
+        } else alert('Ошибка');
     }
 
-    // ---------- Поручения ----------
+    // ---------- Поручения с бейджем и иконками ----------
+    const currentUserFullName = {{ user_full_name|tojson }};
+    const userId = {{ user_id|tojson }};
+
     async function loadAssignments() {
         const resp = await fetch('/api/assignments');
         const assignments = await resp.json();
@@ -344,29 +350,56 @@
             document.getElementById('assignmentsBadge').style.display = 'none';
             return;
         }
-        const today = new Date().toISOString().slice(0, 10);
+        const today = new Date().toISOString().slice(0,10);
         let activeCount = 0;
         let html = '';
         assignments.forEach(a => {
             let cardClass = 'assignment-card';
-            let isOverdue = (a.deadline < today && !a.is_completed);
-            if (a.is_completed) cardClass += ' assignment-completed';
-            else if (isOverdue) cardClass += ' assignment-overdue';
-            else cardClass += ' assignment-active';
-            if (!a.is_completed) activeCount++;
-            html += `<div class="${cardClass}">
+            let statusClass = '';
+            let statusName = '';
+            let isOverdue = (a.deadline < today && a.status === 'active');
+            switch (a.status) {
+                case 'active': statusName = 'Активно'; statusClass = 'assignment-active'; if (!a.is_completed) activeCount++; break;
+                case 'pending_review': statusName = 'На проверке'; statusClass = 'assignment-pending_review'; activeCount++; break;
+                case 'done': statusName = 'Выполнено'; statusClass = 'assignment-completed'; break;
+                case 'rejected': statusName = 'Отклонено'; statusClass = 'assignment-rejected'; activeCount++; break;
+                default: statusName = a.status; statusClass = 'assignment-active';
+            }
+            cardClass += ' ' + statusClass;
+            if (isOverdue && a.status === 'active') cardClass += ' assignment-overdue';
+
+            const isAuthor = (a.author_id == userId);
+            const isResponsible = (currentUserFullName == a.responsible_name);
+            const isController = (currentUserFullName == a.controller_name);
+            let actionsHtml = '';
+
+            if (isResponsible && a.status === 'active') {
+                actionsHtml += `<button class="btn btn-sm btn-primary submit-review" data-id="${a.id}" title="Отправить на проверку"><i class="bi bi-envelope-paper"></i></button> `;
+            }
+            if (isController && a.status === 'pending_review') {
+                actionsHtml += `<button class="btn btn-sm btn-success approve-assignment" data-id="${a.id}" title="Подтвердить выполнение"><i class="bi bi-check-lg"></i></button> `;
+                actionsHtml += `<button class="btn btn-sm btn-danger reject-assignment" data-id="${a.id}" title="Отклонить"><i class="bi bi-x-lg"></i></button> `;
+            }
+            if ((isAuthor || isResponsible) && a.status === 'rejected') {
+                actionsHtml += `<button class="btn btn-sm btn-secondary revise-assignment" data-id="${a.id}" title="Доработать"><i class="bi bi-arrow-repeat"></i></button> `;
+            }
+            if (isAuthor && a.status === 'active') {
+                actionsHtml += `<button class="btn btn-sm btn-outline-primary extend-deadline" data-id="${a.id}" title="Продлить срок"><i class="bi bi-calendar-plus"></i></button> `;
+            }
+            if (isAuthor) {
+                actionsHtml += `<button class="btn btn-sm btn-outline-secondary edit-assignment" data-id="${a.id}" title="Редактировать"><i class="bi bi-pencil"></i></button> `;
+                actionsHtml += `<button class="btn btn-sm btn-outline-danger delete-assignment" data-id="${a.id}" title="Удалить"><i class="bi bi-trash"></i></button>`;
+            }
+
+            html += `<div class="${cardClass} mb-2 p-3 rounded shadow-sm">
                 <div class="d-flex justify-content-between">
-                    <div><strong>${escapeHtml(a.title)}</strong></div>
-                    <div>
-                        ${!a.is_completed && a.author_id == currentUserId ? `<button class="btn btn-sm btn-outline-primary extend-deadline" data-id="${a.id}">📅 Продлить</button>` : ''}
-                        ${a.author_id == currentUserId ? `<button class="btn btn-sm btn-outline-secondary edit-assignment" data-id="${a.id}">✏️</button>` : ''}
-                        ${a.author_id == currentUserId ? `<button class="btn btn-sm btn-outline-danger delete-assignment" data-id="${a.id}">🗑️</button>` : ''}
-                    </div>
+                    <div><strong>${escapeHtml(a.title)}</strong> <span class="badge bg-secondary">${statusName}</span></div>
+                    <div>${actionsHtml}</div>
                 </div>
                 <div class="small text-muted">От: ${a.author_name} | Отв: ${a.responsible_name} | Контр: ${a.controller_name || '—'}</div>
                 <div class="small">Создано: ${a.created_date} | Срок: ${a.deadline} ${isOverdue ? '<span class="text-danger"> (просрочено!)</span>' : ''}</div>
-                <div class="small">Статус: ${a.is_completed ? '<span class="text-success">Выполнено</span>' : '<span class="text-primary">Активно</span>'}</div>
-                <div class="mt-1">${escapeHtml(a.description)}</div>
+                ${a.description ? `<div class="mt-1 small">${escapeHtml(a.description)}</div>` : ''}
+                ${a.rejection_reason ? `<div class="mt-1 small text-danger">Причина отклонения: ${escapeHtml(a.rejection_reason)}</div>` : ''}
             </div>`;
         });
         container.innerHTML = html;
@@ -376,6 +409,37 @@
         } else {
             document.getElementById('assignmentsBadge').style.display = 'none';
         }
+        // Обработчики
+        document.querySelectorAll('.submit-review').forEach(btn => btn.addEventListener('click', async () => {
+            const id = btn.dataset.id;
+            await fetch(`/api/assignment/${id}/submit-review`, { method: 'POST' });
+            loadAssignments();
+        }));
+        document.querySelectorAll('.approve-assignment').forEach(btn => btn.addEventListener('click', async () => {
+            const id = btn.dataset.id;
+            await fetch(`/api/assignment/${id}/approve`, { method: 'POST' });
+            loadAssignments();
+        }));
+        document.querySelectorAll('.reject-assignment').forEach(btn => btn.addEventListener('click', async () => {
+            const id = btn.dataset.id;
+            const reason = prompt('Укажите причину отклонения:');
+            if (reason) {
+                await fetch(`/api/assignment/${id}/reject`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason }) });
+                loadAssignments();
+            }
+        }));
+        document.querySelectorAll('.revise-assignment').forEach(btn => btn.addEventListener('click', async () => {
+            const id = btn.dataset.id;
+            await fetch(`/api/assignment/${id}/revise`, { method: 'POST' });
+            loadAssignments();
+        }));
+        document.querySelectorAll('.extend-deadline').forEach(btn => btn.addEventListener('click', async () => {
+            let newDeadline = prompt('Новая дата срока (ГГГГ-ММ-ДД):');
+            if (newDeadline) {
+                await fetch(`/api/assignment/${btn.dataset.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ deadline: newDeadline }) });
+                loadAssignments();
+            }
+        }));
         document.querySelectorAll('.edit-assignment').forEach(btn => btn.addEventListener('click', () => openAssignmentModal(parseInt(btn.dataset.id))));
         document.querySelectorAll('.delete-assignment').forEach(btn => btn.addEventListener('click', async () => {
             if (confirm('Удалить поручение?')) {
@@ -383,22 +447,11 @@
                 loadAssignments();
             }
         }));
-        document.querySelectorAll('.extend-deadline').forEach(btn => btn.addEventListener('click', async () => {
-            let newDeadline = prompt('Новая дата срока (ГГГГ-ММ-ДД):');
-            if (newDeadline) {
-                await fetch(`/api/assignment/${btn.dataset.id}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ deadline: newDeadline })
-                });
-                loadAssignments();
-            }
-        }));
     }
 
     async function openAssignmentModal(id = null) {
         await loadEmployees();
-        const employees = await fetch('/api/employees').then(r => r.json());
+        const employees = await fetch('/api/employees').then(r=>r.json());
         const responsibleSelect = document.getElementById('assignmentResponsible');
         const controllerSelect = document.getElementById('assignmentController');
         responsibleSelect.innerHTML = '';
@@ -450,13 +503,10 @@
         if (resp.ok) {
             bootstrap.Modal.getInstance(document.getElementById('assignmentModal')).hide();
             loadAssignments();
-        } else {
-            alert('Ошибка сохранения поручения');
-        }
+        } else alert('Ошибка');
     }
 
-    // ---------- Инициализация ----------
-    const currentUserId = {{ session['user_id'] }}; 
+    // Инициализация
     todayBtn.addEventListener('click', () => { currentMode = 'period'; currentPeriod = 'today'; setActivePeriodBtn('today'); loadEvents(); });
     monthBtn.addEventListener('click', () => { currentMode = 'period'; currentPeriod = 'month'; setActivePeriodBtn('month'); loadEvents(); });
     yearBtn.addEventListener('click', () => { currentMode = 'period'; currentPeriod = 'year'; setActivePeriodBtn('year'); loadEvents(); });
